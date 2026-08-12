@@ -3,5 +3,17 @@
     "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
     "editor.rulers": [
         88
+    ],
+    "sqltools.connections": [
+        {
+            "ssh": "Disabled",
+            "previewLimit": 50,
+            "server": "localhost",
+            "port": 5432,
+            "driver": "PostgreSQL",
+            "name": "diagnosisdb",
+            "username": "postgres",
+            "database": "diagnosisdb"
+        }
     ]
 }
