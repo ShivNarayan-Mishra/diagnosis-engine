@@ -1,0 +1,22 @@
+# pipeline_config.yaml — optional schema hint for the diagnosis engine.
+#
+# Matches the real TraceGenerator's factor set as confirmed in
+# running_log_phase2.md (Entry 3): MODEL_VERSIONS = ["v2"], TOOL_VERSIONS = ["2.3"],
+# plus retrieval_score as a continuous factor used throughout the mentor guide
+# and full plan's worked examples.
+#
+# The engine works without this file (falls back to type-guessing + cause_layer
+# "unknown"). This only improves test selection and layer labeling.
+
+name: "diagnosis-engine-synthetic"
+
+factors:
+  tool_version:
+    type: categorical
+    layer: tool
+  model_version:
+    type: categorical
+    layer: model
+  retrieval_score:
+    type: continuous
+    layer: retrieval
