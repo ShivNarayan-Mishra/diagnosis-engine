@@ -20,3 +20,9 @@ factors:
   retrieval_score:
     type: continuous
     layer: retrieval
+  intent:
+    type: categorical
+    layer: taxonomy
+  error_type:
+    type: categorical
+    layer: infra
