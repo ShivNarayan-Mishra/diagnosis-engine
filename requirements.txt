@@ -28,6 +28,7 @@ setuptools==79.0.1
 six==1.17.0
 starlette==1.6.0
 statsmodels==0.14.6
+tabulate==0.10.0
 typing-extensions==4.16.0
 typing-inspection==0.4.4
 uvicorn==0.52.1
