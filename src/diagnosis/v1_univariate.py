@@ -1,86 +1,65 @@
 """
-src/diagnosis/v1_univariate.py
+Phase 6 addition, on top of the confirmed Phase 4 file: cross-factor ranking
+now uses a comparable effect-size scale instead of raw |effect_size|.
 
-Phase 4 — UnivariateDiagnosisEngine.
+THE PROBLEM THIS FIXES (found via RetrievalDegradationScenario, the first
+continuous-factor scenario built -- see running_log_phase6.md Entry 3/4):
+Hypothesis.effect_size is odds ratio for categorical factors (unbounded,
+[0, inf)) and rank-biserial r for continuous factors (bounded [-1, 1]).
+Sorting hypotheses by raw abs(effect_size) therefore isn't comparing like
+with like -- a categorical factor with a middling-to-large odds ratio can
+outrank a genuinely strong continuous association purely because odds
+ratio has no ceiling and rank-biserial r does. Confirmed empirically: on
+20 seeded RetrievalDegradationScenario runs, 5/20 had a spurious
+`intent` categorical hypothesis (a factor untouched by the scenario) rank
+above the correctly-detected `retrieval_score` continuous hypothesis,
+purely on unbounded-vs-bounded-scale grounds, not because intent was
+actually a stronger signal.
 
-Implements the real DiagnosisEngine ABC (confirmed from the actual pasted
-interfaces.py, not the earlier guessed sketch mentioned in session_wrapup.md):
+THE FIX, per established meta-analysis practice for comparing effect sizes
+across different statistical test families -- don't compare heterogeneous
+effect sizes directly, convert to a common scale first:
+  - Categorical (odds ratio) -> Yule's Q: q = (OR - 1) / (OR + 1).
+    Yule's Q is a direct, well-established transform of an odds ratio onto
+    the same [-1, +1] scale rank-biserial r already uses (Yule, 1912).
+    An alternative in the literature is converting OR to Cohen's d via the
+    logit method (ln(OR) / 1.81, per Chinn, S. (2000), "A simple method for
+    converting an odds ratio to effect size for use in meta-analysis",
+    Statistics in Medicine 19(22):3127-3131) and then d to r -- Yule's Q is
+    used here instead because it's a direct one-line transform of the odds
+    ratio already being computed, with no intermediate logit/d step and no
+    approximation of group-size correction. Both land in the same [-1, +1]
+    family; see the `effectsize` R package documentation (Ben-Shachar et
+    al., "Convert Between d, r, and Odds Ratio") for the general
+    equivalence between these representations.
+  - Continuous (rank-biserial r): already on [-1, +1] (Wendt's formula,
+    r = 1 - 2U/(n1*n2)) -- used as-is, no conversion needed.
 
-    def diagnose(self, traces: list[TraceRecord], changepoint: Changepoint) -> list[Hypothesis]
+Hypothesis.effect_size ITSELF IS UNCHANGED -- it still reports odds ratio
+for categorical and rank-biserial r for continuous, since those are the
+interpretable numbers worth showing in evidence output ("odds ratio 14.97"
+means something on its own; Yule's Q of 0.87 means less to a human reading
+benchmark output). Yule's Q is computed as an internal ranking key only,
+also surfaced in the evidence dict for auditability (every number in this
+engine's output is supposed to be traceable back to a specific
+calculation, per mentor_guide.md's transparency principle -- a hidden
+ranking key that isn't visible anywhere would violate that).
 
-Design notes / deliberate deviations from the original plan doc's phrasing,
-stated explicitly rather than buried:
+Separately worth naming explicitly, since it came up while researching
+this fix: "certainty" splits into two different, non-substitutable axes in
+this literature -- p-value/FDR-correction answers "is this association
+real," effect size answers "how strong is it." This fix only touches the
+second axis; the Benjamini-Hochberg correction upstream of this ranking
+step is untouched.
 
-1. Before/after split.
-   The ABC hands this engine one flat trace list plus a single Changepoint —
-   not two pre-split windows. Split here is:
-       before = t.timestamp <  changepoint.timestamp
-       after  = t.timestamp >= changepoint.timestamp
-   This matches how ZTestDetector picks its own changepoint timestamp
-   (min(t.timestamp for t in recent)) — so "after" here is exactly the set
-   ZTestDetector called "recent", by construction. If diagnose() is ever
-   called with a Changepoint that didn't come from ZTestDetector run over
-   the same trace list, this assumption should be re-checked.
-
-2. Per-factor "which value counts as the candidate" selection.
-   The plan doc says categorical factors get "chi-square on a 2x2 table
-   (dominant value vs rest)" without defining "dominant." Picking "most
-   frequent value overall" would, in a realistic isolated-fault scenario
-   (large before-window, partial after-window rollout), often just re-select
-   the untouched baseline value as "dominant" — that would make the engine
-   blind to the actual injected fault by construction, which defeats the
-   point. So instead: every distinct value of the factor is tested against
-   "everything else," and the value with the strongest raw signal (smallest
-   p-value) is kept as that factor's one representative Hypothesis.
-
-   CONFIRMED BUG, CAUGHT DURING SANDBOX VERIFICATION, NOW FIXED: an earlier
-   version of this method only tested every distinct value when there were
-   more than two of them, and for the common two-value case (e.g.
-   tool_version has exactly "2.3" and "2.4") just picked
-   sorted(distinct)[0] — the alphabetically-first value — as the only
-   candidate, with no regard for which one was actually the injected fault.
-   That's a real problem specifically because a 2x2 chi-square test gives
-   the IDENTICAL p-value regardless of which value is labeled "present"
-   (only the odds ratio flips, to its reciprocal) — so "alphabetically
-   first" was silently deciding the outcome 100% of the time in the
-   two-value case, independent of the data. Caught in Scenario A of the
-   sandbox verification: with tool_version injected as "2.3" -> "2.4", the
-   engine reported "tool_version=2.3" (odds ratio 0.028, i.e. protective)
-   as the top hypothesis instead of "tool_version=2.4" (the actual fault).
-   Statistically not wrong — 2.3 being protective and 2.4 being harmful are
-   the same underlying fact — but backwards for the interview-facing
-   labeling, and would have silently mislabeled every two-valued categorical
-   fault in the benchmark.
-
-   Fix: every distinct value is always tested (not just when there are more
-   than two). Selection is by smallest p-value first; ties (which the
-   two-value case will always produce, since both directions share one
-   p-value) are broken by preferring the direction with odds_ratio > 1 — the
-   "this value increases failure risk" framing, which is what a Hypothesis
-   is supposed to communicate.
-
-3. Only `factors` dict keys are scanned — not `branch` / `latency_ms`
-   directly. Matches the original plan's "iterate factors.keys() dynamically"
-   language. branch/latency_ms are first-class TraceRecord fields, not part
-   of the open bag; out of scope here unless a pipeline logs them into
-   `factors` itself.
-
-4. FDR correction scope.
-   Benjamini-Hochberg is applied across one p-value per factor key (the
-   representative value chosen per note 2), not across every individual
-   value tested while searching for that representative. Testing multiple
-   values to pick the best one is a selection step, not multiple separate
-   hypotheses being reported — only the hypothesis that actually gets
-   surfaced per factor enters the correction. This keeps the correction
-   sized to the number of claims actually being made, which is the FDR-
-   correction stated in mentor_guide.md, but it's a specific choice worth
-   being able to name in an interview.
-
-5. cause_layer defaults to "unknown" when no pipeline_config.yaml is present
-   or a factor key isn't declared in it. No hardcoded name-pattern guessing
-   (e.g. no special-casing "tool_version" -> "tool") — that would silently
-   reintroduce pipeline-specific logic into what's supposed to be a
-   pipeline-agnostic engine.
+Also worth naming: this project's existing top-1/top-3 accuracy benchmark
+methodology (from mentor_guide.md, predating this fix) already matches
+current published root-cause-analysis benchmark practice -- e.g. a 2026
+paper introducing NetCause (arXiv:2606.13543) evaluates with "exact match
+accuracy" (top-ranked hypothesis matches ground truth) and Hits@k, capped
+at k=5, which is functionally the same discipline. Not a change made here,
+just confirmation the existing benchmark design isn't idiosyncratic to
+this project.
 """
 from __future__ import annotations
 
@@ -138,27 +117,29 @@ class UnivariateDiagnosisEngine(DiagnosisEngine):
         pvalues = [r["p_value"] for r in raw_results]
         reject, _, _, _ = multipletests(pvalues, alpha=self.alpha, method="fdr_bh")
 
-        hypotheses = []
+        # (rank_key, Hypothesis) pairs -- rank_key is the comparable-scale
+        # value (Yule's Q for categorical, rank-biserial r for continuous,
+        # both on [-1, +1]), kept separate from Hypothesis.effect_size
+        # (which stays as the interpretable odds-ratio/rank-biserial value
+        # reported to the caller -- see module docstring).
+        ranked = []
         for r, is_significant in zip(raw_results, reject):
             if not is_significant:
                 continue
             layer = "unknown"
             if self.config is not None:
                 layer = self.config.factor_layer(r["key"]) or "unknown"
-            hypotheses.append(
-                Hypothesis(
-                    cause_layer=layer,
-                    factor=r["factor_label"],
-                    p_value=r["p_value"],
-                    effect_size=r["effect_size"],
-                    evidence=r["evidence"],
-                )
+            hypothesis = Hypothesis(
+                cause_layer=layer,
+                factor=r["factor_label"],
+                p_value=r["p_value"],
+                effect_size=r["effect_size"],
+                evidence=r["evidence"],
             )
+            ranked.append((r["rank_key"], hypothesis))
 
-        hypotheses.sort(key=lambda h: abs(h.effect_size), reverse=True)
-        return hypotheses
-
-    # ---- type resolution ---------------------------------------------------
+        ranked.sort(key=lambda pair: abs(pair[0]), reverse=True)
+        return [hypothesis for _, hypothesis in ranked]
 
     def _resolve_type(self, key: str, combined: list[TraceRecord]) -> str | None:
         if self.config is not None:
@@ -177,8 +158,6 @@ class UnivariateDiagnosisEngine(DiagnosisEngine):
             return "categorical"
         return None
 
-    # ---- categorical factors ------------------------------------------------
-
     def _test_categorical(self, key: str, combined: list[TraceRecord]) -> dict | None:
         present = [
             (t, t.factors.get(key, _MISSING))
@@ -192,8 +171,6 @@ class UnivariateDiagnosisEngine(DiagnosisEngine):
         if len(distinct) < 2:
             return None
 
-        # Always test every distinct value — see note 2 in the module
-        # docstring for why short-circuiting the 2-value case was a bug.
         best = None
         for candidate_value in distinct:
             built = self._build_2x2(present, key, candidate_value)
@@ -201,6 +178,15 @@ class UnivariateDiagnosisEngine(DiagnosisEngine):
                 continue
             table, evidence = built
             or_value, table_used = self._odds_ratio(table)
+            # Yule's Q -- one-line transform of the odds ratio onto the
+            # same [-1, +1] scale rank-biserial r uses, so categorical and
+            # continuous hypotheses can be ranked against each other on a
+            # common scale. See module docstring for the citation trail
+            # (Yule, 1912; Chinn, 2000; effectsize package docs). Q=0 at
+            # OR=1 (no association), Q>0 when OR>1, Q<0 when OR<1 -- same
+            # sign behavior as (OR - 1), just bounded.
+            yules_q = (or_value - 1) / (or_value + 1)
+            evidence = {**evidence, "yules_q": yules_q}
             try:
                 _, p_value, _, _ = chi2_contingency(table_used, correction=False)
             except ValueError:
@@ -210,37 +196,31 @@ class UnivariateDiagnosisEngine(DiagnosisEngine):
                 "factor_label": f"{key}={candidate_value}",
                 "p_value": p_value,
                 "effect_size": or_value,
+                "rank_key": yules_q,
                 "evidence": evidence,
             }
             if best is None:
                 best = candidate_result
                 continue
 
-            # Smallest p-value wins. "Tied" is checked with a relative
-            # tolerance, not `==` — two complementary directions on the same
-            # 2x2 table produce p-values equal in theory but not bit-for-bit
-            # equal in floating point (confirmed during sandbox verification:
-            # 1.9629191563990977e-24 vs 1.9629191563991113e-24 for the same
-            # underlying counts, same data, opposite direction). An exact
-            # `==` check silently never fires, and "smallest wins" then
-            # picks whichever side floating-point noise happens to favor —
-            # which is exactly the bug this tie-break exists to prevent, so
-            # it has to tolerate the noise, not just check for identical
-            # values.
             is_tied = math.isclose(
                 candidate_result["p_value"], best["p_value"], rel_tol=1e-9
             )
             if is_tied:
-                if candidate_result["effect_size"] >= 1 > best["effect_size"]:
+                # Equivalent to the pre-fix condition
+                # (candidate effect_size >= 1 > best effect_size), restated
+                # in terms of rank_key's sign since Q=0 corresponds exactly
+                # to OR=1: no behavior change here, just consistency with
+                # the new comparable-scale value used everywhere else.
+                if candidate_result["rank_key"] >= 0 > best["rank_key"]:
                     best = candidate_result
-                # else: keep current best (already >=1, or neither is >=1)
             elif candidate_result["p_value"] < best["p_value"]:
                 best = candidate_result
 
         return best
 
     def _build_2x2(self, present, key: str, candidate_value: str):
-        a = b = c = d = 0  # failure|present, success|present, failure|absent, success|absent
+        a = b = c = d = 0
         for t, v in present:
             is_candidate = str(v) == candidate_value
             is_failure = t.outcome == "failure"
@@ -271,15 +251,10 @@ class UnivariateDiagnosisEngine(DiagnosisEngine):
         a, b = table[0]
         c, d = table[1]
         if 0 in (a, b, c, d):
-            # Haldane-Anscombe correction — only when a zero cell would
-            # otherwise make the ratio divide-by-zero/undefined. Not applied
-            # unconditionally since it slightly biases every ratio toward 1.
             a, b, c, d = a + 0.5, b + 0.5, c + 0.5, d + 0.5
             table = [[a, b], [c, d]]
         odds_ratio = (a * d) / (b * c)
         return odds_ratio, table
-
-    # ---- continuous factors --------------------------------------------------
 
     def _test_continuous(self, key: str, combined: list[TraceRecord]) -> dict | None:
         failure_vals = []
@@ -323,5 +298,8 @@ class UnivariateDiagnosisEngine(DiagnosisEngine):
             "factor_label": key,
             "p_value": p_value,
             "effect_size": rank_biserial,
+            # Already on [-1, +1] -- used directly as the comparable
+            # ranking key, no conversion needed (see module docstring).
+            "rank_key": rank_biserial,
             "evidence": evidence,
         }
