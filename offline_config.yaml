@@ -1,0 +1,73 @@
+# offline_config.yaml
+#
+# Phase 8 real-data config. Two jobs in one file:
+#
+# 1. `factors:` -- same shape as the synthetic pipeline_config.yaml, read by
+#    the existing load_pipeline_config() unchanged. Extra keys per factor
+#    (source_column, derived) are harmless -- factor_type()/factor_layer()
+#    only ever call .get("type")/.get("layer"), so they ignore anything else
+#    without needing loader.py to change at all. This is a real, useful
+#    confirmation that the original config format was flexible enough for a
+#    use case it wasn't originally designed for.
+#
+# 2. `column_map:` -- new, offline-replay-specific. Tells
+#    replay_offline_logs.py which raw CSV column feeds which TraceRecord
+#    field. Not read by load_pipeline_config() at all (it only looks at
+#    `name` and `factors`) -- read separately, directly, by the replay
+#    script itself.
+#
+# Deliberately excluded from `factors`: retrieval_score, retrieved_doc_id,
+# grounding_passed. Every row in the real export has these blank -- this
+# pipeline's retrieval instrumentation isn't wired up yet. Declaring them
+# would just mean every trace has a None value, so the engine would silently
+# skip them anyway (_resolve_type returns None when no trace has a real
+# value) -- excluding them here is about being honest in the config about
+# what this pipeline actually measures right now, not a functional necessity.
+
+name: "project1-rag-agent-offline"
+
+column_map:
+  request_id: request_id
+  timestamp: timestamp
+  latency_ms: latency_ms
+  branch: branch
+  outcome:
+    source_column: guardrail_outcome
+    map:
+      pass: success
+      fallback: failure
+
+factors:
+  category:
+    type: categorical
+    layer: taxonomy
+    source_column: category
+  intent:
+    type: categorical
+    layer: taxonomy
+    source_column: intent
+  valid_json:
+    type: categorical
+    layer: infra
+    source_column: valid_json
+  in_taxonomy:
+    type: categorical
+    layer: taxonomy
+    source_column: in_taxonomy
+  # Not direct column pass-throughs -- derived in replay_offline_logs.py from
+  # the raw `fallback_reason` column, which is never stored as a factor
+  # itself. Raw fallback_reason values for fabricated-ID events embed the
+  # actual invented order/tracking IDs (e.g. "fabricated_id: ['ORD-12345',
+  # 'TRK-48291']"), which differ on every occurrence -- storing that verbatim
+  # would make every fabricated-ID event its own near-unique category (n=1
+  # each), untestable by chi-square. These two derived booleans collapse
+  # that down to "did this family of failure happen," which is the thing
+  # actually worth testing.
+  keyword_gate_rejected:
+    type: categorical
+    layer: taxonomy
+    derived: true
+  fabricated_id_detected:
+    type: categorical
+    layer: model
+    derived: true
