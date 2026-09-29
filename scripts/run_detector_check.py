@@ -1,29 +1,4 @@
-"""
-scripts/run_detector_check.py
 
-Phase 3 manual verification tool. Pulls two explicit windows straight out of
-Postgres via PostgresTraceStore.query_window() and runs ZTestDetector on them.
-
-This is the CLI-only replacement for what would have been "call GET /diagnose
-and eyeball the response" in the old HTTP-wired plan. No FastAPI involved.
-
-Usage:
-    python scripts/run_detector_check.py \\
-        --baseline-start 2024-01-01T00:00:00+00:00 \\
-        --baseline-end   2024-01-01T00:05:00+00:00 \\
-        --recent-start   2024-01-01T00:05:00+00:00 \\
-        --recent-end     2024-01-01T00:10:00+00:00 \\
-        [--branch rag]
-
-Timestamps must be ISO 8601 with an explicit offset (e.g. +00:00 or Z).
-Pass them as --flag value pairs (argparse handles this correctly) — do NOT
-hand-build a URL query string with these; that's the exact "+" vs space bug
-from Phase 1 (see day1_tutor_explainer.md). Not relevant to a CLI script's
-argv parsing, but the underlying lesson (let the library handle encoding/
-parsing of timestamps, don't hand-roll it) is worth remembering here too —
-this script uses datetime.fromisoformat() directly on argparse's raw string,
-no custom parsing.
-"""
 from __future__ import annotations
 
 import argparse

@@ -1,39 +1,4 @@
-"""
-scripts/run_diagnosis_check.py
 
-Phase 4's real-data checkpoint — the equivalent of Phase 3's
-run_detector_check.py. Pulls two real windows from PostgresTraceStore,
-runs ZTestDetector to confirm/find the changepoint, then runs
-UnivariateDiagnosisEngine on the combined window and prints the ranked
-hypotheses.
-
-Two ways to pick the windows:
-
-1. Explicit timestamps (always works, no guessing involved):
-   python scripts/run_diagnosis_check.py \
-       --baseline-start 2024-01-01T00:00:00+00:00 \
-       --baseline-end   2024-01-01T00:03:20+00:00 \
-       --recent-start   2024-01-01T00:03:20+00:00 \
-       --recent-end     2024-01-01T00:06:40+00:00
-
-2. By injected_fault_id (convenience — looks up the min/max timestamp of
-   traces tagged with that fault id for the "recent" window, and uses an
-   equal-length window immediately preceding it as "baseline"). This mode
-   runs one raw SQL query directly against the traces table rather than
-   going through PostgresTraceStore, since the store's public API
-   (write/query_window) doesn't expose a filter-by-injected_fault_id
-   lookup. Confirm the derived windows look right (the script prints them)
-   before trusting the result — this mode is a convenience, not a
-   guaranteed-correct reconstruction of exactly what a given scenario run
-   did.
-
-   python scripts/run_diagnosis_check.py --fault-id tool_regression_6c47f84d
-
-If you don't know real timestamps or fault ids off the top of your head,
-find them first:
-    docker compose exec postgres psql -U postgres -d diagnosisdb -c \
-        "SELECT scenario_id, fault_type, injected_at FROM fault_scenarios ORDER BY created_at DESC LIMIT 5;"
-"""
 from __future__ import annotations
 
 import argparse

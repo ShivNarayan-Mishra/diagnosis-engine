@@ -1,24 +1,3 @@
-"""
-scripts/replay_offline_logs.py
-
-Phase 8 -- offline real-data validation. Reads a static CSV export (no live
-DB-to-DB plumbing, per diagnosis_engine_full_plan.md), maps its columns onto
-TraceRecord via offline_config.yaml, and runs the SAME real
-ZTestDetector -> UnivariateDiagnosisEngine pipeline every synthetic scenario
-already goes through. No new detection or diagnosis logic gets written here --
-reusing the already-verified engine unmodified is the entire point of this
-phase.
-
-No GroundTruth exists for real data (nobody injected a fault on purpose), so
-there's nothing to score against and no accuracy number to report. The output
-is just the ranked hypotheses (or an explicit "no changepoint detected"),
-exactly like run_diagnosis_check.py's real-Postgres mode -- this script is
-that same idea, pointed at a static file instead of a live database.
-
-Usage:
-    python scripts/replay_offline_logs.py --csv full_db_dump.csv
-    python scripts/replay_offline_logs.py --csv full_db_dump.csv --split-index 9
-"""
 from __future__ import annotations
 
 import argparse

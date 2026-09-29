@@ -1,12 +1,4 @@
-"""
-Runs one fault scenario against the real Dockerized Postgres and logs its GroundTruth to
-the fault_scenarios table. This is the manual verification step for Phase 2 — after
-running it, check the traces table for a visible failure-rate jump around "now".
 
-Usage:
-    python scripts/run_scenario.py --scenario tool_regression
-    python scripts/run_scenario.py --scenario model_swap --seed 7
-"""
 
 from __future__ import annotations
 

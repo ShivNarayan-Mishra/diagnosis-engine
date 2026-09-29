@@ -1,29 +1,4 @@
-"""
-scripts/run_benchmark.py
 
-Phase 5 benchmark runner. Runs N repetitions of each isolated-fault scenario
-(ToolRegressionScenario, ModelSwapScenario) blind -- the diagnosis pipeline never sees
-GroundTruth until after it has already produced its hypotheses -- and scores each run
-against the GroundTruth logged at injection time.
-
-Uses InMemoryTraceStore, not the real Postgres one. See
-src/store/in_memory.py's docstring and running_log_phase5.md Entry 3 for why.
-
-Scope, per diagnosis_engine_full_plan.md: "isolated fault, large window" condition
-only. Small-window sensitivity and false-positive rate (NullScenario) are Phase 6,
-once that scenario class exists.
-
-Phase 6 addition (running_log_phase6.md Entry 7): RetrievalDegradationScenario added
-to SCENARIOS. Two lines changed from the Phase 5 version, marked below with
-"# Phase 6 addition" -- nothing else in this file touched. RetrievalDegradationScenario
-takes the same seed=... constructor argument as the other two scenario classes, so
-run_one()'s existing scenario_cls(seed=scenario_seed) call works unmodified.
-
-Usage:
-    python scripts/run_benchmark.py
-    python scripts/run_benchmark.py --n 20 --scenario tool_regression
-    python scripts/run_benchmark.py --n 20 --scenario retrieval_degradation --verbose
-"""
 from __future__ import annotations
 
 import argparse

@@ -1,12 +1,4 @@
-"""
-Fills the DB with N stable, fault-free baseline traces ending "now" (UTC), spaced
-`interval_seconds` apart. Run this to have normal-looking data in the DB to eyeball or to
-compare fault-injected data against.
 
-Usage:
-    python scripts/seed_stable_traces.py
-    python scripts/seed_stable_traces.py --n 500 --failure-rate 0.04
-"""
 from __future__ import annotations
 
 import argparse
