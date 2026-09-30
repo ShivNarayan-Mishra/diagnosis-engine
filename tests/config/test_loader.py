@@ -1,14 +1,4 @@
-"""
-tests/config/test_loader.py
 
-Direct unit tests for PipelineConfig / load_pipeline_config. Every prior
-confirmation of this module's correctness was indirect -- exercised through
-UnivariateDiagnosisEngine (test_config_populates_cause_layer) or observed via
-run_benchmark.py's printed cause_layer output across five scenario types
-(running_log_phase6.md) -- but nothing tested this module in isolation before
-now. Closes the same category of gap test_scorer.py closed for scorer.py
-(running_log_phase6.md Entry 5).
-"""
 from pathlib import Path
 
 import pytest

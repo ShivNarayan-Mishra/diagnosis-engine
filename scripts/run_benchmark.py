@@ -91,12 +91,7 @@ def summarize(fault_type: str, runs: list[ScoredRun]) -> dict:
         # unavoidably) reports top1_correct=False for every one of these runs
         # regardless of whether the engine behaved correctly. The actual
         # metric that matters: did the engine fire ANY hypothesis when nothing
-        # was injected. That's a false positive, full stop -- whether it came
-        # from a spurious ZTestDetector changepoint on pure noise, or a real
-        # changepoint (also just noise, since nothing was injected) followed
-        # by a spurious factor surviving FDR correction. Both paths already
-        # produce n_hypotheses > 0 by the time score() runs, so this is a
-        # straight read of that field, not new detection logic.
+        # was injected. 
         false_positives = sum(1 for r in runs if r.n_hypotheses > 0)
         return {
             "fault_type": fault_type,

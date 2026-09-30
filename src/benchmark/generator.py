@@ -1,9 +1,8 @@
 """
-TraceGenerator — Phase 1 version. Emits believable NORMAL traffic only.
-No fault injection here yet (that's Phase 2's ToolRegressionScenario etc,
-which will wrap/mutate what this generator produces).
+TraceGenerator —  Emits believable NORMAL traffic only.
+No fault injection here yet.
 
-Always seed it. Reproducibility matters more than "real" randomness here —
+ Reproducibility matters more than "real" randomness here —
 you want to be able to re-run the exact same synthetic scenario later.
 """
 from __future__ import annotations

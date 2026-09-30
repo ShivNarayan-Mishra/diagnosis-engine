@@ -2,9 +2,7 @@
 The permanent data shapes for this project.
 
 Rule: this file imports from nothing else in the project. Every other module
-imports FROM here. If you ever feel tempted to import store/, adapters/, or
-api/ into this file, stop — that breaks the one dependency rule that keeps
-every implementation swappable later.
+imports FROM here. 
 """
 from __future__ import annotations
 

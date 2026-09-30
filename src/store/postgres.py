@@ -1,5 +1,4 @@
 """
-PostgresTraceStore — implements TraceStore against the Dockerized Postgres.
 
 Two operations only, on purpose:
   write()        -> one parameterized INSERT

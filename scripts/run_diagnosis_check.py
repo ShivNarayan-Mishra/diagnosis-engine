@@ -7,18 +7,15 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-# Same sys.path fix as run_detector_check.py (Phase 3) — a plain
-# `python scripts/foo.py` invocation only adds scripts/ to sys.path, not the
-# project root, so `from src...` fails without this.
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import psycopg2  # noqa: E402
-from dotenv import load_dotenv  # noqa: E402
+import psycopg2 
+from dotenv import load_dotenv 
 
-from src.config.loader import load_pipeline_config  # noqa: E402
-from src.detection.ztest_detector import ZTestDetector  # noqa: E402
-from src.diagnosis.v1_univariate import UnivariateDiagnosisEngine  # noqa: E402
-from src.store.postgres import PostgresTraceStore  # noqa: E402
+from src.config.loader import load_pipeline_config  
+from src.detection.ztest_detector import ZTestDetector  
+from src.diagnosis.v1_univariate import UnivariateDiagnosisEngine  
+from src.store.postgres import PostgresTraceStore
 
 load_dotenv()
 

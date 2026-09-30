@@ -1,10 +1,6 @@
 """
 Unit tests for ZTestDetector. No Postgres required — uses TraceGenerator
 directly, in-memory, mutating outcomes to simulate a known failure-rate shift.
-This is the same "generate baseline, generate recent, mutate recent's
-outcomes toward failure" pattern the Phase 2 scenarios already use, just
-without persisting to the DB or logging GroundTruth — this file only tests
-the detector's math, not the injection/persistence machinery.
 """
 from __future__ import annotations
 

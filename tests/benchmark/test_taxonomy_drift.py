@@ -1,19 +1,4 @@
-"""
-tests/benchmark/test_taxonomy_drift.py
 
-Rewritten after the same real bug that hit test_null_scenario.py
-(running_log_phase6.md Entry 14) -- PostgresTraceStore queried by raw wall-clock
-timestamp range picks up other tests' traces from the same shared, persistent
-table within the same pytest session, since before-window traces are
-deliberately untagged. test_taxonomy_drift_before_window_uses_only_known_intents
-failed with an exact-count assertion (len(before) == 20) that had zero
-tolerance for this -- the failing count grew across consecutive real runs (385,
-then 579), the signature of a shared, ever-growing table, not a real scenario
-bug. See test_null_scenario.py's docstring for the full root-cause writeup;
-same fix applied here: InMemoryTraceStore instead of PostgresTraceStore, since
-these tests check scenario injection logic in isolation, not real DB
-integration.
-"""
 from datetime import datetime, timedelta, timezone
 
 from src.benchmark.generator import INTENTS, TraceGenerator

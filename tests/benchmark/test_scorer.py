@@ -1,14 +1,4 @@
-"""
-tests/benchmark/test_scorer.py
 
-No test file existed for scorer.py anywhere in the project's tests/ tree before
-this — every other module (contracts, adapters, store, detection, diagnosis,
-benchmark/scenarios) has one, this was the gap. Cases here are the same 7
-hand-built scenarios verified in a throwaway sandbox script during the
-scorer.py continuous-factor fix (running_log_phase6.md Entry 1), now promoted
-to a real, permanent pytest file so they run as part of the project's actual
-suite going forward instead of living only in chat history.
-"""
 from datetime import datetime, timezone
 
 from src.contracts.records import GroundTruth, Hypothesis

@@ -2,11 +2,7 @@
 tests/diagnosis/test_v1_univariate.py
 
 Unit tests for UnivariateDiagnosisEngine. All in-memory — no Postgres needed,
-same as tests/detection/test_ztest_detector.py. These mirror the scenarios run
-during sandbox verification before this file was handed over (see
-running_log_phase4.md, Entry 1), turned into real pytest assertions instead of
-one-off print statements.
-
+same as tests/detection/test_ztest_detector.py. T
 Deliberately does NOT use TraceGenerator — TraceRecord objects are built
 directly here, so this file has no dependency on generator.py's exact API,
 per the standing rule against writing code against files that weren't pasted

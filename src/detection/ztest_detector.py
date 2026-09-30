@@ -1,29 +1,4 @@
-"""
-src/detection/ztest_detector.py
 
-Phase 3 — lean CLI scope (see diagnosis_engine_full_plan.md's rescope note).
-
-Static two-window detector. No rolling scan, no window-size tuning search.
-You supply a baseline window and a recent window (as list[TraceRecord] — e.g.
-from PostgresTraceStore.query_window() called twice, once per window). This
-answers one question: is the failure rate in `recent` significantly different
-from `baseline`?
-
-DELIBERATELY DOES NOT IMPLEMENT src.contracts.interfaces.ChangepointDetector.
-
-That ABC's signature is `detect(self, series: list[TraceRecord]) -> list[Changepoint]`
-— one continuous series, scanned for wherever a shift might be, returning
-possibly many changepoints. This class's signature is
-`detect(self, baseline, recent) -> Changepoint | None` — two explicit windows
-you already chose, returning at most one answer. These are genuinely different
-contracts, not a compatible narrowing. Subclassing the ABC and leaving
-`detect()` incompatible would be a lie Python wouldn't catch (the ABC only
-enforces that a method named `detect` exists, not its signature). So this
-class does not inherit ChangepointDetector at all. Say this plainly if asked:
-"I cut rolling/streaming detection to keep the MVP finishable — the seam
-concept still applies at the two-window level, but I didn't force it under
-an ABC built for a different shape."
-"""
 
 from __future__ import annotations
 

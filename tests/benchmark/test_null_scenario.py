@@ -1,11 +1,8 @@
 """
 tests/benchmark/test_null_scenario.py
 
-Rewritten after a real bug found on the real machine (running_log_phase6.md
-Entry 14): the original version used PostgresTraceStore and queried the shared,
-persistent `traces` table by raw wall-clock timestamp range for before-window
-traces (which are deliberately left untagged, same convention every scenario
-uses). Within one pytest session, multiple scenario tests all write to that same
+Rewritten after a real bug found on the real machine 
+Within one pytest session, multiple scenario tests all write to that same
 real table within seconds of each other -- the timestamp-range query had no way
 to tell "my before-window traces" apart from "some other test's traces that
 happened to land nearby in time," and silently vacuumed up both. Confirmed by
@@ -16,9 +13,7 @@ noise.
 Fix: these tests check scenario INJECTION LOGIC in isolation, not real database
 integration (that's test_postgres.py's job) -- they don't need PostgresTraceStore
 at all. Switched to InMemoryTraceStore, the same store run_benchmark.py already
-uses and for the same underlying reason (a fresh, isolated store per run, immune
-to cross-run pollution by construction, per running_log_phase5.md Entry 3's
-original reasoning for introducing it). Tests that already filtered by the
+uses and for the same underlying reason.Tests that already filtered by the
 unique injected_fault_id (test_null_scenario_traces_are_written_and_queryable,
 test_null_scenario_does_not_mutate_factors) were never actually broken by this,
 but switched too for consistency and because there's no reason left to touch
@@ -80,20 +75,7 @@ def test_null_scenario_does_not_mutate_factors():
 
 
 def test_null_scenario_shows_no_visible_failure_spike():
-    """
-    Sanity check in the same spirit as
-    test_tool_regression_shows_visible_failure_spike (engineer_handbook.md):
-    eyeball the raw rates before trusting any statistical test built on top
-    of them. Here the expectation is the OPPOSITE of that test -- before and
-    after should look statistically indistinguishable, since nothing was
-    injected. Uses a fixed baseline_failure_rate so both windows are drawn
-    from a known, identical rate, not left to the generator's own default
-    variability.
-
-    Now uses an isolated InMemoryTraceStore, so before/after only ever
-    contain THIS scenario's own traces -- the exact-timestamp-range query is
-    safe here in a way it wasn't against the shared real Postgres table.
-    """
+   
     generator = TraceGenerator(seed=111)
     store = InMemoryTraceStore()
     scenario = NullScenario(n_before=100, n_after=100, baseline_failure_rate=0.10)
